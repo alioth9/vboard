@@ -29,11 +29,11 @@ class VirtualKeyboard(Gtk.Window):
         super().__init__(title=" WBoard")
         self.set_border_width(10)
         self.set_resizable(True)
-        self.set_keep_above(True)
+        # self.set_keep_above(True)
         self.set_modal(False)
-        self.set_focus_on_map(False)
-        self.set_can_focus(False)
-        self.set_accept_focus(False)
+        # self.set_focus_on_map(False)
+        # self.set_can_focus(False)
+        # self.set_accept_focus(False)
         self.modifiers = {
             uinput.KEY_LEFTSHIFT: False,
             uinput.KEY_RIGHTSHIFT: False,
