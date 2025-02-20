@@ -1,0 +1,11 @@
+[WBoard rules]
+Description=WBoard rules
+above=true
+aboverule=3
+acceptfocusrule=2
+desktops=\\0
+desktopsrule=3
+title=Virtual Keyboard
+types=1
+wmclass=wboard
+wmclassmatch=2
