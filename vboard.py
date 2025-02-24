@@ -2,10 +2,14 @@ import gi
 import uinput
 import time
 import os
+import configparser
+
 os.environ['GDK_BACKEND'] = 'x11'
 
 gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk
+from gi.repository import GLib
+
 
 key_mapping = {uinput.KEY_ESC: "Esc", uinput.KEY_1: "1", uinput.KEY_2: "2", uinput.KEY_3: "3", uinput.KEY_4: "4", uinput.KEY_5: "5", uinput.KEY_6: "6",
     uinput.KEY_7: "7", uinput.KEY_8: "8", uinput.KEY_9: "9", uinput.KEY_0: "0", uinput.KEY_MINUS: "-", uinput.KEY_EQUAL: "=",
@@ -26,14 +30,27 @@ key_mapping = {uinput.KEY_ESC: "Esc", uinput.KEY_1: "1", uinput.KEY_2: "2", uinp
 
 class VirtualKeyboard(Gtk.Window):
     def __init__(self):
-        super().__init__(title="Virtual Keyboard")
-        self.set_border_width(10)
+        super().__init__(title="Virtual Keyboard", name="toplevel")
+
+        self.set_border_width(0)
         self.set_resizable(True)
         self.set_keep_above(True)
         self.set_modal(False)
         self.set_focus_on_map(False)
         self.set_can_focus(False)
         self.set_accept_focus(False)
+        self.width=0
+        self.height=0
+
+        self.CONFIG_DIR = os.path.expanduser("~/.config/vboard")
+        self.CONFIG_FILE = os.path.join(self.CONFIG_DIR, "settings.conf")
+        self.config = configparser.ConfigParser()
+
+        self.bg_color = "0, 0, 0"  # background color
+        self.opacity="0.90"
+        self.text_color="white"
+        self.read_settings()
+
         self.modifiers = {
             uinput.KEY_LEFTSHIFT: False,
             uinput.KEY_RIGHTSHIFT: False,
@@ -44,14 +61,51 @@ class VirtualKeyboard(Gtk.Window):
             uinput.KEY_LEFTMETA: False,
             uinput.KEY_RIGHTMETA: False
         }
+        self.colors = [
+            ("Black", "0,0,0"),
+            ("Red", "255,0,0"),
+            ("Pink", "255,105,183"),
+            ("White", "255,255,255"),
+            ("Green", "0,255,0"),
+            ("Blue", "0,0,110"),
+            ("Gray", "128,128,128"),
+            ("Dark Gray", "64,64,64"),
+            ("Orange", "255,165,0"),
+            ("Yellow", "255,255,0"),
+            ("Purple", "128,0,128"),
+            ("Cyan", "0,255,255"),
+            ("Teal", "0,128,128"),
+            ("Brown", "139,69,19"),
+            ("Gold", "255,215,0"),
+            ("Silver", "192,192,192"),
+            ("Turquoise", "64,224,208"),
+            ("Magenta", "255,0,255"),
+            ("Olive", "128,128,0"),
+            ("Maroon", "128,0,0"),
+            ("Indigo", "75,0,130"),
+            ("Beige", "245,245,220"),
+            ("Lavender", "230,230,250")
 
+        ]
+        if (self.width!=0):
+            self.set_default_size(self.width, self.height)
+
+        self.header = Gtk.HeaderBar()
+        self.header.set_show_close_button(True)
+        self.buttons=[]
+        self.color_combobox = Gtk.ComboBoxText()
+        # Set the header bar as the titlebar of the window
+        self.set_titlebar(self.header)
+        self.create_settings()
 
         grid = Gtk.Grid()  # Use Grid for layout
         grid.set_row_homogeneous(True)  # Allow rows to resize based on content
         grid.set_column_homogeneous(True)  # Columns are homogeneous
-
+        grid.set_margin_start(3)
+        grid.set_margin_end(3)
+        grid.set_name("grid")
         self.add(grid)
-
+        self.apply_css()
         self.device = uinput.Device(list(key_mapping.keys()))
 
         # Define rows for keys
@@ -68,6 +122,139 @@ class VirtualKeyboard(Gtk.Window):
             self.create_row(grid, row_index, keys)
 
 
+    def create_settings(self):
+        self.create_button("☰", self.change_visibility,callbacks=1)
+        self.create_button("+", self.change_opacity,True,2)
+        self.create_button("-", self.change_opacity, False,2)
+        self.create_button( f"{self.opacity}")
+        self.color_combobox.append_text("Change Background")
+        self.color_combobox.set_active(0)
+        self.color_combobox.connect("changed", self.change_color)
+        self.color_combobox.set_name("combobox")
+        self.header.add(self.color_combobox)
+
+
+        for label, color in self.colors:
+            self.color_combobox.append_text(label)
+
+    def on_resize(self, widget, event):
+        self.width, self.height = self.get_size()  # Get the current size after resize
+
+
+
+    def create_button(self, label_="", callback=None, callback2=None, callbacks=0):
+        button= Gtk.Button(label=label_)
+        if callbacks==1:
+            button.connect("clicked", callback)
+        elif callbacks==2:
+            button.connect("clicked", callback, callback2)
+
+        if label_==self.opacity:
+            self.opacity_btn=button
+            self.opacity_btn.set_tooltip_text("opacity")
+
+        self.header.add(button)
+        self.buttons.append(button)
+
+    def change_visibility(self, widget=None):
+        for button in self.buttons:
+            if button.get_label()!="☰":
+                button.set_visible(not button.get_visible())
+        self.color_combobox.set_visible(not self.color_combobox.get_visible() )
+
+    def change_color (self, widget):
+        label=self.color_combobox.get_active_text()
+        for label_ , color_ in self.colors:
+            if label_==label:
+                self.bg_color = color_
+
+        if (self.bg_color in {"255,255,255" ,"0,255,0" , "255,255,0", "245,245,220", "230,230,250", "255,215,0"}):
+            self.text_color="#1C1C1C"
+        else:
+            self.text_color="white"
+        self.apply_css()
+
+
+    def change_opacity(self,widget, boolean):
+        if (boolean):
+            self.opacity = str(round(min(1.0, float(self.opacity) + 0.01),2))
+        else:
+            self.opacity = str(round(max(0.0, float(self.opacity) - 0.01),2))
+        self.opacity_btn.set_label(f"{self.opacity}")
+        self.apply_css()
+    def apply_css (self):
+        provider = Gtk.CssProvider()
+
+
+        css = f"""
+        headerbar {{
+            background-color: rgba({self.bg_color}, {self.opacity});
+
+
+        }}
+
+        headerbar button{{
+            min-width: 60px;
+            padding: 0px;
+            border: 0px
+
+
+        }}
+
+        headerbar button label{{
+        color: {self.text_color};
+
+        }}
+
+
+        #toplevel {{
+            background-color: rgba({self.bg_color}, {self.opacity});
+
+
+
+
+        }}
+
+        #grid button label{{
+            color: {self.text_color};
+
+
+        }}
+
+
+
+        button {{
+            background-color: transparent;
+            border: 1px solid rgb(85, 85, 85);
+            color:white;
+
+        }}
+
+        button:hover {{
+            border: 1px solid rgb(173, 216, 230);
+        }}
+
+       tooltip {{
+            background-color: black;
+            color: white;
+            padding: 5px;
+        }}
+
+       #combobox button.combo  {{
+
+            color: {self.text_color};
+            padding: 5px;
+        }}
+
+
+        """
+
+        try:
+            provider.load_from_data(css.encode("utf-8"))
+        except GLib.GError as e:
+            print(f"CSS Error: {e.message}")
+        Gtk.StyleContext.add_provider_for_screen(self.get_screen(), provider, Gtk.STYLE_PROVIDER_PRIORITY_USER)
+
     def create_row(self, grid, row_index, keys):
         col = 0  # Start from the first column
         width=0
@@ -82,11 +269,14 @@ class VirtualKeyboard(Gtk.Window):
                     button = Gtk.Button(label=key_label)
                 button.connect("clicked", self.on_button_click, key_event)
 
-              # if key_label == "Tab": width=3
-                if key_label == "Space": width=10
-                #elif key_label == "CapsLock": width=4
+                if key_label == "Space": width=12
+                elif key_label == "CapsLock": width=3
                 elif key_label == "Shift_R" : width=4
-                elif key_label == "Enter": width=4
+                elif key_label == "Shift_L" : width=4
+                elif key_label == "Backspace": width=5
+                elif key_label == "`": width=1
+                elif key_label == "\\" : width=4
+                elif key_label == "Enter": width=5
                 else: width=2
 
                 grid.attach(button, col, row_index, width, 1)
@@ -114,9 +304,45 @@ class VirtualKeyboard(Gtk.Window):
                 self.modifiers[mod_key] = False
 
 
+    def read_settings(self):
+        # Ensure the config directory exists
+        try:
+            os.makedirs(self.CONFIG_DIR, exist_ok=True)
+        except PermissionError:
+            print("Warning: No permission to create the config directory. Proceeding without it.")
+
+        try:
+            if os.path.exists(self.CONFIG_FILE):
+                self.config.read(self.CONFIG_FILE)
+                self.bg_color = self.config.get("DEFAULT", "bg_color" )
+                self.opacity = self.config.get("DEFAULT", "opacity" )
+                self.text_color = self.config.get("DEFAULT", "text_color", fallback="white" )
+                self.width=self.config.getint("DEFAULT", "width" , fallback=0)
+                self.height=self.config.getint("DEFAULT", "height", fallback=0)
+                print(f"rgba: {self.bg_color}, {self.opacity}")
+
+        except configparser.Error as e:
+            print(f"Warning: Could not read config file ({e}). Using default values.")
+
+
+
+    def save_settings(self):
+
+        self.config["DEFAULT"] = {"bg_color": self.bg_color, "opacity": self.opacity, "text_color": self.text_color, "width": self.width, "height": self.height}
+
+        try:
+            with open(self.CONFIG_FILE, "w") as configfile:
+                self.config.write(configfile)
+
+        except (configparser.Error, IOError) as e:
+            print(f"Warning: Could not write to config file ({e}). Changes will not be saved.")
+
 
 if __name__ == "__main__":
     win = VirtualKeyboard()
     win.connect("destroy", Gtk.main_quit)
+    win.connect("destroy", lambda w: win.save_settings())
     win.show_all()
+    win.connect("configure-event", win.on_resize)
+    win.change_visibility()
     Gtk.main()
