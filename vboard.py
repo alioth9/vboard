@@ -93,6 +93,7 @@ class VirtualKeyboard(Gtk.Window):
         self.header = Gtk.HeaderBar()
         self.header.set_show_close_button(True)
         self.buttons=[]
+        self.row_buttons=[]
         self.color_combobox = Gtk.ComboBoxText()
         # Set the header bar as the titlebar of the window
         self.set_titlebar(self.header)
@@ -144,6 +145,7 @@ class VirtualKeyboard(Gtk.Window):
 
     def create_button(self, label_="", callback=None, callback2=None, callbacks=0):
         button= Gtk.Button(label=label_)
+        button.set_name("headbar-button")
         if callbacks==1:
             button.connect("clicked", callback)
         elif callbacks==2:
@@ -189,14 +191,15 @@ class VirtualKeyboard(Gtk.Window):
         css = f"""
         headerbar {{
             background-color: rgba({self.bg_color}, {self.opacity});
-
+            border: 0px;
 
         }}
 
         headerbar button{{
-            min-width: 60px;
+            min-width: 40px;
             padding: 0px;
-            border: 0px
+            border: 0px;
+            
 
 
         }}
@@ -206,6 +209,9 @@ class VirtualKeyboard(Gtk.Window):
 
         }}
 
+        #headbar-button, #combobox button.combo {{
+            background-image: none;
+        }}
 
         #toplevel {{
             background-color: rgba({self.bg_color}, {self.opacity});
@@ -221,21 +227,23 @@ class VirtualKeyboard(Gtk.Window):
 
         }}
 
+        #grid button {{
+                    border: 1px solid rgba(85, 85, 85, 0.7) ;
+                    background-image: none;
 
+                }}
 
         button {{
             background-color: transparent;
-            border: 1px solid rgb(85, 85, 85);
-            color:white;
+            color:{self.text_color};
 
         }}
 
-        button:hover {{
-            border: 1px solid rgb(173, 216, 230);
+       #grid button:hover {{
+            border: 1px solid #00CACB;
         }}
 
        tooltip {{
-            background-color: black;
             color: white;
             padding: 5px;
         }}
@@ -268,7 +276,7 @@ class VirtualKeyboard(Gtk.Window):
                 else:
                     button = Gtk.Button(label=key_label)
                 button.connect("clicked", self.on_button_click, key_event)
-
+                self.row_buttons.append(button)
                 if key_label == "Space": width=12
                 elif key_label == "CapsLock": width=3
                 elif key_label == "Shift_R" : width=4
@@ -282,10 +290,29 @@ class VirtualKeyboard(Gtk.Window):
                 grid.attach(button, col, row_index, width, 1)
                 col += width  # Skip 4 columns for the space button
 
+    def update_label(self, show_symbols):
+        button_positions = [(0, "` ~"), (1, "1 !"), (2, "2 @"), (3, "3 #"), (4, "4 $"), (5, "5 %"), (6, "6 ^"), (7, "7 &"), (8, "8 *"), (9, "9 ("), (10, "0 )")
+        , (11, "- _"), (12, "= +"),(25,"[ {"), (26,"] }"), (27,"\\ |"), (38, "; :"), (39, "' \""), (49, ", <"), (50, ". >"), (51, "/ ?")]
+
+        for pos, label in button_positions:
+            label_parts = label.split()  
+            if show_symbols:
+                self.row_buttons[pos].set_label(label_parts[1])
+            else:
+                self.row_buttons[pos].set_label(label_parts[0])
+
+
     def on_button_click(self, widget, key_event):
         # If the key event is one of the modifiers, update its state and return.
         if key_event in self.modifiers:
             self.modifiers[key_event] = not self.modifiers[key_event]
+            if(self.modifiers[uinput.KEY_LEFTSHIFT]==True and self.modifiers[uinput.KEY_RIGHTSHIFT]==True):
+                self.modifiers[uinput.KEY_LEFTSHIFT]=False
+                self.modifiers[uinput.KEY_RIGHTSHIFT]=False
+            if(self.modifiers[uinput.KEY_LEFTSHIFT]==True or self.modifiers[uinput.KEY_RIGHTSHIFT]==True):
+                self.update_label(True)
+            else:
+                self.update_label(False)
             return
         # For a normal key, press any active modifiers.
         for mod_key, active in self.modifiers.items():
@@ -294,9 +321,9 @@ class VirtualKeyboard(Gtk.Window):
 
         # Emit the normal key press.
         self.device.emit(key_event, 1)
-        time.sleep(0.05)
+        #time.sleep(0.05)
         self.device.emit(key_event, 0)
-
+        self.update_label(False)
         # Release the modifiers that were active.
         for mod_key, active in self.modifiers.items():
             if active:

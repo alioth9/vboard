@@ -2,6 +2,8 @@
 *A virtual keyboard for Linux with Wayland support and extensive customization options.*
 
 
+<img src="https://github.com/user-attachments/assets/66e9a879-c677-429f-bd11-503d10e63c2b" width="400">
+
 ## Overview
 vboard is a lightweight, customizable virtual keyboard designed for Linux systems with Wayland support. It provides an on-screen keyboard solution that's especially useful for:
 
@@ -34,14 +36,14 @@ sudo dnf install python3-uinput steam-devices
 
 **For arch-based distributions:**  
 ```bash
-yay -S python-uinput steam-devices
+yay -Syu python-uinput steam-devices
 ```
 
 
 ### **2. Download vboard**  
 Retrieve the latest version of `vboard.py` using `wget`:  
 ```bash
-wget https://github.com/mdev588/vboard/releases/download/v1.15/vboard.py
+wget https://github.com/mdev588/vboard/releases/download/v1.17/vboard.py
 ```
 
 
@@ -51,6 +53,26 @@ wget https://github.com/mdev588/vboard/releases/download/v1.15/vboard.py
 ```bash
 python3 vboard.py
 ```
+
+### **4. Create shortcut (optional)**  
+
+```bash
+cat > ~/.local/share/applications/vboard.desktop <<EOF
+[Desktop Entry]
+Exec=bash -c 'python3 ~/vboard.py'
+Icon=preferences-desktop-keyboard
+Name=Vboard
+Terminal=false
+Type=Application
+Categories=Utility
+NoDisplay=false
+EOF
+```
+Make shortcut executable
+```
+chmod +x ~/.local/share/applications/vboard.desktop
+```
+Now you should find it in menu insdie Utility section
 
 ### Usage
 When launched, vboard presents a compact keyboard with a minimal interface. The keyboard includes:
@@ -96,10 +118,10 @@ Reload udev rules with
 sudo udevadm control --reload-rules && sudo udevadm trigger
 ```
 ---
-### 3. Error: 'steam-devices package not found'. Fedora only
-Make sure the RPM Fusion repository is enabled. You can follow the guide here:
+### 3. Error: 'steam-devices package not found'.
+- in Fedora make sure the RPM Fusion repository is enabled. You can follow the guide here:
 https://rpmfusion.org/Configuration
-
+- Others can follow steps in here https://github.com/mdev588/vboard/issues/8
 ## Contributing 
 Contributions to vboard are welcome! Here are some ways you can help:
 
@@ -114,4 +136,8 @@ Please make sure to test your changes before submitting a pull request.
 vboard is licensed under the GNU Lesser General Public License v2.1. See LICENSE.md for the full license text.
 
 ## Note
-Currently, only the QWERTY US layout is supported, so other layouts may cause some keys to produce different keystrokes. BUT this could easily be fixed by modifying the row list arrangement
+
+* Currently only the QWERTY US layout is supported, so other layouts may cause some keys to produce different keystrokes. But this could easily be fixed by modifying the row list arrangement.
+
+* Currently do not work correctly on wlroots based window managers.
+
